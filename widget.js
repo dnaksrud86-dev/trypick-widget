@@ -267,6 +267,9 @@
     ".tp-reward{list-style:none;margin:7px 0 0;padding:7px 2px 0;border-top:1px solid #f0e6e2;font-size:12px;line-height:1.3;color:#8a8a8a;display:flex;align-items:center;gap:5px;letter-spacing:-.2px}" +
     ".tp-reward .tp-coin{width:15px;height:15px;flex:0 0 auto}" +
     ".tp-reward .tp-rwd-amt{color:" + CD + ";font-weight:800}" +
+    // 상세페이지 적립금(판매가 행 아래) — 살짝 크게
+    ".tp-reward-detail{margin:10px 0 0;padding-top:10px;font-size:13.5px}" +
+    ".tp-reward-detail .tp-coin{width:17px;height:17px}" +
     // 모바일
     "@media(max-width:480px){.tp-panel{right:0;bottom:0;width:100vw;height:100vh;max-height:100vh;border-radius:0}.tp-fab{right:16px;bottom:16px}.tp-reward{font-size:11px}}";
   // 둥근 폰트: Quicksand(로고/숫자), Jua(한글 본문) — 위젯 전체를 동글하게
@@ -530,10 +533,28 @@
     (target || document.body).appendChild(bar);
   }
 
-  /* ===== 상품목록 예상 적립금 표기 =====
-   * 각 상품카드의 판매가(li.price_all > .custom) 바로 아래에 "💰 최대 N원 적립" 한 줄을 얹음.
-   * 멱등(data-tp-reward 마커). 가격 없음/로그인필요/0원은 건너뜀. 목록 템플릿에만 존재하는
-   * .price_all을 타깃하므로 상세페이지엔 영향 없음.                                          */
+  /* ===== 예상 적립금 표기 (목록 + 상세) =====
+   * 판매가(소비자가 아님!) × rewardRate 를 "🙂 최대 N원 적립" 한 줄로 얹음. 멱등(data-tp-reward).
+   * 적립금은 판매가 기준. 소비자가>판매가면 .custom 텍스트는 '소비자가'라 오산되므로 판매가를 정확히 골라 씀. */
+  var REWARD_SMILEY =
+    '<svg class="tp-coin" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<rect x="1" y="1" width="22" height="22" rx="7" fill="' + CONFIG.color + '"/>' +
+      '<circle cx="8.6" cy="10" r="1.8" fill="#fff"/><circle cx="15.4" cy="10" r="1.8" fill="#fff"/>' +
+      '<path d="M7.6 13.8 Q12 18 16.4 13.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>' +
+    "</svg>";
+  function rewardNode(price, extraClass) {
+    var reward = Math.floor(price * CONFIG.rewardRate);
+    return $('<li class="tp-reward' + (extraClass ? " " + extraClass : "") + '">' + REWARD_SMILEY +
+      '<span>' + CONFIG.rewardPrefix +
+      '<b class="tp-rwd-amt">' + reward.toLocaleString("ko-KR") + '원</b>' +
+      CONFIG.rewardSuffix + "</span></li>");
+  }
+  function numFrom(el) {
+    var m = el && (el.textContent || "").match(/[\d,]+/);
+    return m ? parseInt(m[0].replace(/,/g, ""), 10) : 0;
+  }
+
+  // 목록: 각 카드 li.price_all 아래에
   function injectRewards() {
     if (!CONFIG.rewardShow) return;
     try {
@@ -541,32 +562,33 @@
       for (var i = 0; i < rows.length; i++) {
         var li = rows[i];
         if (li.getAttribute("data-tp-reward")) continue;          // 이미 처리됨
-        // ★판매가 추출(소비자가 아님!): 디자인앱 d-custom = 판매가가 가장 정확.
-        //   소비자가>판매가일 때 .price_all .custom 텍스트는 '소비자가'라 적립금 오산되므로 d-custom 우선.
+        // 판매가 추출: 디자인앱 d-custom(=판매가) 우선 → 폴백 .pri → .custom
         var price = 0;
         var card = li.closest ? (li.closest(".item_list_box") || li.closest("li")) : null;
         var cp = card && card.querySelector ? card.querySelector(".custom_pro") : null;
         if (cp && cp.getAttribute("d-custom")) price = parseInt(cp.getAttribute("d-custom"), 10);
-        if (!price) {                                              // 폴백: .pri(=판매가) → .custom 순
-          var pe = li.querySelector(".pri") || li.querySelector(".custom");
-          var m = pe && (pe.textContent || "").match(/[\d,]+/);
-          if (m) price = parseInt(m[0].replace(/,/g, ""), 10);
-        }
+        if (!price) price = numFrom(li.querySelector(".pri") || li.querySelector(".custom"));
         if (!price || price < 1000) continue;                      // 0원/비정상/로그인필요 → 스킵
-        var reward = Math.floor(price * CONFIG.rewardRate);
         li.setAttribute("data-tp-reward", "1");
-        var smiley =
-          '<svg class="tp-coin" viewBox="0 0 24 24" aria-hidden="true">' +
-            '<rect x="1" y="1" width="22" height="22" rx="7" fill="' + CONFIG.color + '"/>' +
-            '<circle cx="8.6" cy="10" r="1.8" fill="#fff"/><circle cx="15.4" cy="10" r="1.8" fill="#fff"/>' +
-            '<path d="M7.6 13.8 Q12 18 16.4 13.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>' +
-          "</svg>";
-        var el = $('<li class="tp-reward">' + smiley +
-          '<span>' + CONFIG.rewardPrefix +
-          '<b class="tp-rwd-amt">' + reward.toLocaleString("ko-KR") + '원</b>' +
-          CONFIG.rewardSuffix + "</span></li>");
+        var el = rewardNode(price);
         if (li.parentNode) li.parentNode.insertBefore(el, li.nextSibling);
       }
+    } catch (e) {}
+  }
+
+  // 상세: 판매가(#span_product_price_text) 행 아래에
+  function injectRewardDetail() {
+    if (!CONFIG.rewardShow) return;
+    try {
+      var pe = document.getElementById("span_product_price_text");
+      if (!pe) return;                                             // 상세페이지 아님
+      var row = (pe.closest && (pe.closest(".product_price_css") || pe.closest("li"))) || pe.parentElement;
+      if (!row || row.getAttribute("data-tp-reward")) return;
+      var price = numFrom(pe);
+      if (!price || price < 1000) return;
+      row.setAttribute("data-tp-reward", "1");
+      var el = rewardNode(price, "tp-reward-detail");
+      if (row.parentNode) row.parentNode.insertBefore(el, row.nextSibling);
     } catch (e) {}
   }
 
@@ -577,12 +599,13 @@
     showPopup();
     injectSocial();
     injectRewards();
+    injectRewardDetail();
     hideSections();
     // 카카오 버튼·잔여 섹션은 SDK/모션으로 늦게 그려질 수 있어 여러 번/감시로 처리
     hideKakao();
-    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); hideSections(); }, ms); });
+    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); injectRewardDetail(); hideSections(); }, ms); });
     try {
-      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); hideSections(); });
+      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); injectRewardDetail(); hideSections(); });
       mo.observe(document.body, { childList: true, subtree: true });
       setTimeout(function () { mo.disconnect(); }, 12000); // 12초 후 감시 종료(성능)
     } catch (e) {}
