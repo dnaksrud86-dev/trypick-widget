@@ -23,6 +23,11 @@
     joinUrl: "/member/join.html",      // 회원가입 페이지
     couponAmount: "3,000원",           // 가입 축하 쿠폰 금액(안내 문구용)
 
+    // ★SNS 푸터 링크(쇼핑몰 하단에 인스타·스레드 아이콘). 비우면 해당 아이콘 미노출.
+    instagramUrl: "https://www.instagram.com/trypick_2026",
+    threadsUrl: "https://www.threads.com/@trypick_2026",
+    socialLabel: "TRYPICK 팔로우하고 신상 소식 받기",
+
     // 고객센터 상담: AI가 못 푸는 문의는 카카오톡 채널로 연결. (채널 채팅 URL)
     kakaoUrl: "http://pf.kakao.com/_PKFAX/chat",
 
@@ -53,6 +58,14 @@
       { l: 2,  t: 93, w: 42, h: 6,  action: "today" },  // 오늘 하루 보지 않기
       { l: 74, t: 93, w: 25, h: 6,  action: "close" },  // 닫기
     ],
+
+    // ★상품목록 '예상 적립금' 표기: 판매가 아래에 한 줄("💰 최대 N원 적립")을 얹음.
+    //   rate=0.20 → 구매 10% + 포토리뷰 10% 합산(=최대치)이라 prefix를 "최대 "로 둠.
+    //   정책 바뀌면 rate/prefix/suffix만 조정. rewardShow:false로 끌 수 있음.
+    rewardShow: true,
+    rewardRate: 0.20,
+    rewardPrefix: "최대 ",
+    rewardSuffix: "원 적립",
   };
 
   /* ===== KB — FAQ 지식베이스(즉답용). 운영자가 자유롭게 추가/수정 =====
@@ -237,8 +250,20 @@
     ".tp-pop-foot{display:flex;justify-content:space-between;padding:0 24px 18px;font-size:12px}" +
     ".tp-pop-foot button{background:none;border:none;color:#b09a93;cursor:pointer;font-size:12px}" +
     ".tp-pop-foot button:hover{color:#7a655f}" +
+    // SNS 푸터 바(쇼핑몰 하단 인스타·스레드)
+    ".tp-social{box-sizing:border-box;width:100%;display:flex;flex-direction:column;align-items:center;gap:11px;" +
+    "padding:26px 16px 30px;background:" + CR + ";font-family:'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif}" +
+    ".tp-social-label{font-size:13px;color:" + CD + ";letter-spacing:.4px}" +
+    ".tp-social-ic{display:flex;gap:14px}" +
+    ".tp-social-ic a{width:46px;height:46px;border-radius:50%;background:" + C + ";display:flex;align-items:center;" +
+    "justify-content:center;box-shadow:0 3px 10px rgba(200,95,87,.25);transition:transform .15s,background .15s}" +
+    ".tp-social-ic a:hover{background:" + CD + ";transform:translateY(-2px)}" +
+    ".tp-social-ic a svg{width:24px;height:24px;fill:#fff}" +
+    // 상품목록 예상 적립금 한 줄
+    ".tp-reward{list-style:none;margin:3px 0 0;padding:0;font-size:12px;font-weight:700;color:" + CD + ";letter-spacing:-.2px;line-height:1.3}" +
+    ".tp-reward .tp-coin{margin-right:2px}" +
     // 모바일
-    "@media(max-width:480px){.tp-panel{right:0;bottom:0;width:100vw;height:100vh;max-height:100vh;border-radius:0}.tp-fab{right:16px;bottom:16px}}";
+    "@media(max-width:480px){.tp-panel{right:0;bottom:0;width:100vw;height:100vh;max-height:100vh;border-radius:0}.tp-fab{right:16px;bottom:16px}.tp-reward{font-size:11px}}";
   // 둥근 폰트: Quicksand(로고/숫자), Jua(한글 본문) — 위젯 전체를 동글하게
   document.head.appendChild($('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&family=Jua&display=swap">'));
   document.head.appendChild($("<style>" + css + "</style>"));
@@ -454,19 +479,78 @@
     } catch (e) {}
   }
 
+  /* ===== SNS 푸터 바 (쇼핑몰 하단 인스타·스레드 아이콘) ===== */
+  function injectSocial() {
+    if (!CONFIG.instagramUrl && !CONFIG.threadsUrl) return;
+    if (document.querySelector(".tp-social")) return;           // 중복 방지
+    // 공식 로고(simple-icons) 글리프 — 흰색으로 코랄 원형 버튼 위에 표시
+    var IG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.03.084c-1.277.06-2.149.264-2.911.563-.789.308-1.458.72-2.123 1.388C1.33 2.703.918 3.372.613 4.156.318 4.92.118 5.792.062 7.07.006 8.347-.007 8.758 0 12.017c.006 3.258.02 3.667.082 4.947.061 1.277.264 2.148.563 2.911.308.789.72 1.457 1.388 2.123.668.665 1.337 1.074 2.122 1.38.763.295 1.636.495 2.913.552 1.278.057 1.688.069 4.946.063 3.258-.006 3.668-.021 4.948-.082 1.28-.06 2.147-.265 2.91-.563.789-.309 1.458-.72 2.123-1.388.665-.668 1.074-1.338 1.38-2.121.295-.764.495-1.636.552-2.913.057-1.281.069-1.69.063-4.948-.006-3.258-.021-3.667-.082-4.947-.06-1.28-.264-2.149-.563-2.912-.308-.789-.72-1.457-1.388-2.123C21.298 1.33 20.628.92 19.845.616 19.081.321 18.209.121 16.931.064 15.654.007 15.243-.005 11.984.001 8.726.007 8.317.021 7.03.084m.14 21.693c-1.17-.05-1.805-.245-2.228-.408-.56-.216-.96-.477-1.382-.895-.422-.418-.681-.819-.9-1.378-.164-.423-.362-1.058-.417-2.228-.06-1.264-.072-1.644-.079-4.848-.007-3.204.005-3.583.061-4.848.05-1.169.246-1.805.408-2.228.216-.561.477-.96.895-1.382.418-.422.818-.68 1.378-.9.423-.164 1.058-.361 2.227-.417 1.266-.06 1.645-.072 4.848-.079 3.203-.007 3.583.005 4.85.061 1.168.05 1.805.245 2.227.408.561.216.96.476 1.382.895.422.419.681.818.9 1.378.165.423.362 1.058.417 2.228.06 1.265.073 1.644.081 4.848.008 3.204-.005 3.583-.061 4.848-.051 1.17-.245 1.805-.408 2.229-.216.56-.477.96-.896 1.382-.418.421-.818.68-1.378.9-.423.164-1.057.362-2.226.417-1.266.06-1.645.072-4.849.079-3.204.007-3.582-.006-4.848-.061m9.115-16.19a1.44 1.44 0 1 0 1.437-1.443 1.44 1.44 0 0 0-1.437 1.442M5.838 12.012c.007 3.403 2.771 6.156 6.173 6.149 3.403-.006 6.157-2.77 6.151-6.173-.006-3.403-2.771-6.157-6.174-6.15-3.403.007-6.156 2.771-6.15 6.174M8 12.005a4 4 0 1 1 4.008 3.992A4 4 0 0 1 8 12.005"/></svg>';
+    var TH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.74-1.755-.5-.58-1.27-.876-2.29-.876h-.054c-.66.011-1.297.272-1.94.99l-1.503-1.39c.92-1.214 2.246-1.79 3.787-1.748 1.673.024 2.965.62 3.84 1.771.799 1.054 1.196 2.499 1.213 4.394.124.078.244.16.359.246 1.39 1.043 2.235 2.469 2.385 4.015.182 1.872-.515 4.197-2.385 6.027-1.834 1.795-4.052 2.61-7.236 2.633Zm1.018-11.405c-.327 0-.66.01-.999.03-1.84.103-2.984.946-2.91 2.144.07 1.135 1.328 1.66 2.527 1.594 1.102-.06 2.541-.488 2.783-3.483a10.32 10.32 0 0 0-1.401-.084z"/></svg>';
+    var links = "";
+    if (CONFIG.instagramUrl)
+      links += '<a href="' + CONFIG.instagramUrl + '" target="_blank" rel="noopener" aria-label="TRYPICK 인스타그램">' + IG + "</a>";
+    if (CONFIG.threadsUrl)
+      links += '<a href="' + CONFIG.threadsUrl + '" target="_blank" rel="noopener" aria-label="TRYPICK 스레드">' + TH + "</a>";
+    var bar = $('<div class="tp-social">' +
+      (CONFIG.socialLabel ? '<div class="tp-social-label">' + CONFIG.socialLabel + "</div>" : "") +
+      '<div class="tp-social-ic">' + links + "</div></div>");
+    // 쇼핑몰 푸터를 찾아 그 안에 넣고, 없으면 body 끝에 붙임(둘 다 페이지 최하단)
+    var target = document.querySelector("#footer") || document.querySelector("footer") ||
+                 document.querySelector(".xans-layout-footer");
+    if (!target) {
+      var cand = document.querySelectorAll('[id*="footer" i],[class*="footer" i]');
+      target = cand.length ? cand[cand.length - 1] : null;
+    }
+    (target || document.body).appendChild(bar);
+  }
+
+  /* ===== 상품목록 예상 적립금 표기 =====
+   * 각 상품카드의 판매가(li.price_all > .custom) 바로 아래에 "💰 최대 N원 적립" 한 줄을 얹음.
+   * 멱등(data-tp-reward 마커). 가격 없음/로그인필요/0원은 건너뜀. 목록 템플릿에만 존재하는
+   * .price_all을 타깃하므로 상세페이지엔 영향 없음.                                          */
+  function injectRewards() {
+    if (!CONFIG.rewardShow) return;
+    try {
+      var rows = document.querySelectorAll("li.price_all");
+      for (var i = 0; i < rows.length; i++) {
+        var li = rows[i];
+        if (li.getAttribute("data-tp-reward")) continue;          // 이미 처리됨
+        var priceEl = li.querySelector(".custom") || li.querySelector(".pri");
+        if (!priceEl) continue;
+        var m = (priceEl.textContent || "").match(/[\d,]+/);       // 첫 가격 토큰만(범위가일 때 대비)
+        if (!m) continue;                                          // 숫자 없음(로그인필요 등) → 스킵
+        var price = parseInt(m[0].replace(/,/g, ""), 10);
+        if (!price || price < 1000) continue;                      // 0원/비정상 → 스킵
+        var reward = Math.floor(price * CONFIG.rewardRate);
+        li.setAttribute("data-tp-reward", "1");
+        var el = $('<li class="tp-reward"><span class="tp-coin">💰</span>' +
+          CONFIG.rewardPrefix + reward.toLocaleString("ko-KR") + CONFIG.rewardSuffix + "</li>");
+        if (li.parentNode) li.parentNode.insertBefore(el, li.nextSibling);
+      }
+    } catch (e) {}
+  }
+
   /* ===== 시작 ===== */
   function init() {
     document.body.appendChild(fab);
     buildPanel();
     showPopup();
+    injectSocial();
+    injectRewards();
     // 카카오 버튼은 SDK가 늦게 그릴 수 있어 여러 번/감시로 숨김
     hideKakao();
-    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(hideKakao, ms); });
+    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); }, ms); });
     try {
-      var mo = new MutationObserver(function () { hideKakao(); });
+      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); });
       mo.observe(document.body, { childList: true, subtree: true });
       setTimeout(function () { mo.disconnect(); }, 12000); // 12초 후 감시 종료(성능)
     } catch (e) {}
+    // 무한스크롤/더보기로 뒤늦게 로드되는 상품에도 적립금 표기(스로틀)
+    var rTimer = null;
+    window.addEventListener("scroll", function () {
+      if (rTimer) return;
+      rTimer = setTimeout(function () { rTimer = null; injectRewards(); }, 400);
+    }, { passive: true });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
