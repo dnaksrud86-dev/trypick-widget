@@ -69,7 +69,7 @@
     rewardShow: true,
     rewardRate: 0.20,
     rewardPrefix: "최대 ",
-    rewardSuffix: "원 적립",
+    rewardSuffix: " 적립",
   };
 
   /* ===== KB — FAQ 지식베이스(즉답용). 운영자가 자유롭게 추가/수정 =====
@@ -264,8 +264,9 @@
     ".tp-social-ic a:hover{background:" + CD + ";transform:translateY(-2px)}" +
     ".tp-social-ic a svg{width:24px;height:24px;fill:#fff}" +
     // 상품목록 예상 적립금 한 줄
-    ".tp-reward{list-style:none;margin:3px 0 0;padding:0;font-size:12px;font-weight:700;color:" + CD + ";letter-spacing:-.2px;line-height:1.3}" +
-    ".tp-reward .tp-coin{width:14px;height:14px;margin-right:4px;vertical-align:-2px}" +
+    ".tp-reward{list-style:none;margin:7px 0 0;padding:7px 2px 0;border-top:1px solid #f0e6e2;font-size:12px;line-height:1.3;color:#8a8a8a;display:flex;align-items:center;gap:5px;letter-spacing:-.2px}" +
+    ".tp-reward .tp-coin{width:15px;height:15px;flex:0 0 auto}" +
+    ".tp-reward .tp-rwd-amt{color:" + CD + ";font-weight:800}" +
     // 모바일
     "@media(max-width:480px){.tp-panel{right:0;bottom:0;width:100vw;height:100vh;max-height:100vh;border-radius:0}.tp-fab{right:16px;bottom:16px}.tp-reward{font-size:11px}}";
   // 둥근 폰트: Quicksand(로고/숫자), Jua(한글 본문) — 위젯 전체를 동글하게
@@ -555,7 +556,9 @@
             '<path d="M7.6 13.8 Q12 18 16.4 13.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>' +
           "</svg>";
         var el = $('<li class="tp-reward">' + smiley +
-          CONFIG.rewardPrefix + reward.toLocaleString("ko-KR") + CONFIG.rewardSuffix + "</li>");
+          '<span>' + CONFIG.rewardPrefix +
+          '<b class="tp-rwd-amt">' + reward.toLocaleString("ko-KR") + '원</b>' +
+          CONFIG.rewardSuffix + "</span></li>");
         if (li.parentNode) li.parentNode.insertBefore(el, li.nextSibling);
       }
     } catch (e) {}
