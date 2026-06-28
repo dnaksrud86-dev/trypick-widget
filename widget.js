@@ -23,6 +23,13 @@
     joinUrl: "/member/join.html",      // 회원가입 페이지
     couponAmount: "3,000원",           // 가입 축하 쿠폰 금액(안내 문구용)
 
+    // 고객센터 상담: AI가 못 푸는 문의는 카카오톡 채널로 연결. (채널 채팅 URL)
+    kakaoUrl: "http://pf.kakao.com/_PKFAX/chat",
+
+    // 라이브에 떠 있던 '기존 카카오톡 플로팅 버튼'을 숨김(AI 비서만 남김).
+    // 우리 채팅 말풍선 안의 카카오 상담 버튼(.tp-kakao)은 제외하고 숨깁니다.
+    hideKakaoFloating: true,
+
     // AI 비서 백엔드(Cloudflare Worker 등). 비워두면 FAQ 전용으로 동작.
     // 진짜 Claude 연결 시 worker URL을 넣으세요. 예: "https://trypick-bot.xxx.workers.dev/chat"
     chatApiUrl: "",
@@ -103,7 +110,16 @@
       keywords: ["교환", "반품", "환불", "취소", "변심", "사이즈교환"],
       answer:
         "상품 수령 후 <b>7일 이내</b>에 교환·반품 신청이 가능합니다(단순 변심 시 왕복 배송비 고객 부담). " +
-        "<b>마이페이지 &gt; 주문조회</b>에서 신청하시거나, 자세한 안내가 필요하시면 말씀해 주세요. 😊",
+        "<b>마이페이지 &gt; 주문조회</b>에서 신청하실 수 있어요. 자세한 안내가 필요하시면 아래 카카오톡 채널로 상담해 주세요. 😊<br>" +
+        '<a class="tp-kakao" href="' + CONFIG.kakaoUrl + '" target="_blank" rel="noopener">💬 카카오톡으로 상담하기</a>',
+    },
+    {
+      title: "고객센터에 문의하고 싶어요",
+      keywords: ["고객센터", "상담", "상담사", "상담원", "문의", "연결", "전화", "연락", "사람", "직원", "카카오", "카톡", "채팅상담"],
+      answer:
+        "AI 비서가 바로 도와드리기 어려운 문의는 <b>카카오톡 채널 상담</b>으로 연결해 드릴게요. 😊<br>" +
+        "아래 버튼을 누르면 TRYPICK 카카오톡 채널로 바로 연결됩니다.<br>" +
+        '<a class="tp-kakao" href="' + CONFIG.kakaoUrl + '" target="_blank" rel="noopener">💬 카카오톡으로 상담하기</a>',
     },
     {
       keywords: ["회원가입", "가입", "join", "혜택받"],
@@ -119,7 +135,9 @@
     "궁금한 점을 물어보거나 아래 버튼을 눌러보세요!";
   var FALLBACK =
     "죄송해요, 정확히 이해하지 못했어요. 🙏 아래 자주 묻는 질문을 눌러보시거나, " +
-    "다른 표현으로 다시 물어봐 주세요. 주문 관련 문의는 <b>마이페이지 &gt; 주문조회</b>를 확인해 주세요.";
+    "다른 표현으로 다시 물어봐 주세요. 주문 관련 문의는 <b>마이페이지 &gt; 주문조회</b>를 확인해 주세요.<br>" +
+    "바로 상담이 필요하시면 카카오톡 채널로 연결해 드릴게요.<br>" +
+    '<a class="tp-kakao" href="' + CONFIG.kakaoUrl + '" target="_blank" rel="noopener">💬 카카오톡으로 상담하기</a>';
 
   /* ===== 유틸 ===== */
   function $(html) {
@@ -147,6 +165,10 @@
   var C = CONFIG.color, CD = CONFIG.colorDark, CR = CONFIG.cream, AC = CONFIG.accent;
   var css =
     ".tp-hidden{display:none!important}" +
+    // 기존 카카오톡 채널 버튼(우리 .tp-kakao 제외) 즉시 숨김
+    (CONFIG.hideKakaoFloating
+      ? 'a[href*="pf.kakao.com"]:not(.tp-kakao),iframe[src*="pf.kakao.com"]{display:none!important}'
+      : "") +
     // 채팅 플로팅 버튼
     ".tp-fab{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:60px;height:60px;border-radius:50%;" +
     "background:" + C + ";box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;" +
@@ -172,6 +194,10 @@
     ".tp-bot .tp-bubble{background:#fff;color:#222;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.07)}" +
     ".tp-me .tp-bubble{background:" + C + ";color:#fff;border-bottom-right-radius:4px}" +
     ".tp-bubble a{text-decoration:underline}" +
+    // 카카오톡 상담 버튼(채팅 말풍선 안에 노출)
+    ".tp-kakao{display:inline-flex;align-items:center;gap:6px;margin-top:9px;background:#FEE500;color:#3C1E1E;font-weight:800;" +
+    "text-decoration:none;padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}" +
+    ".tp-kakao:hover{filter:brightness(.96)}" +
     ".tp-chips{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 14px}" +
     ".tp-chip{background:#fff;border:1px solid " + C + ";color:" + CD + ";border-radius:16px;padding:7px 12px;font-size:13px;cursor:pointer;transition:.12s}" +
     ".tp-chip:hover{background:" + C + ";color:#fff}" +
@@ -393,11 +419,54 @@
   );
   fab.addEventListener("click", toggle);
 
+  /* ===== 기존 카카오톡 플로팅 버튼 숨김 =====
+   * 라이브에 별도로 깔려 있던 카카오 채널 버튼을 AI 비서와 겹치지 않게 숨깁니다.
+   * 우리 위젯(.tp-) 안의 카카오 상담 버튼은 절대 건드리지 않습니다.            */
+  function hideKakao() {
+    if (!CONFIG.hideKakaoFloating) return;
+    try {
+      var found = [];
+      // 1) 카카오 채널로 가는 링크/iframe (우리 .tp-kakao 제외)
+      document.querySelectorAll(
+        'a[href*="pf.kakao.com"],a[href*="kakao.com/_"],iframe[src*="pf.kakao.com"],iframe[src*="kakao.com/_"]'
+      ).forEach(function (n) { found.push(n); });
+      // 2) class/id에 kakao가 들어간 '떠 있는' 요소(고정/절대 위치만)
+      document.querySelectorAll('[class*="kakao" i],[id*="kakao" i],[class*="kko" i]').forEach(function (n) {
+        var pos = "";
+        try { pos = getComputedStyle(n).position; } catch (e) {}
+        if (pos === "fixed" || pos === "absolute") found.push(n);
+      });
+      found.forEach(function (n) {
+        // 우리 위젯 내부 요소는 건드리지 않음
+        if (n.classList && n.classList.contains("tp-kakao")) return;
+        if (n.closest && (n.closest(".tp-panel") || n.closest(".tp-pop-back") || n.closest(".tp-fab"))) return;
+        // 떠 있는(고정/절대) 부모를 찾아 통째로 숨김(빈 잔상 방지)
+        var hide = n, el = n;
+        for (var i = 0; i < 6 && el && el !== document.body; i++) {
+          var pos = "";
+          try { pos = getComputedStyle(el).position; } catch (e) {}
+          if (pos === "fixed" || pos === "absolute") { hide = el; break; }
+          el = el.parentElement;
+        }
+        if (hide.closest && (hide.closest(".tp-panel") || hide.closest(".tp-pop-back") || hide.closest(".tp-fab"))) return;
+        hide.style.setProperty("display", "none", "important");
+      });
+    } catch (e) {}
+  }
+
   /* ===== 시작 ===== */
   function init() {
     document.body.appendChild(fab);
     buildPanel();
     showPopup();
+    // 카카오 버튼은 SDK가 늦게 그릴 수 있어 여러 번/감시로 숨김
+    hideKakao();
+    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(hideKakao, ms); });
+    try {
+      var mo = new MutationObserver(function () { hideKakao(); });
+      mo.observe(document.body, { childList: true, subtree: true });
+      setTimeout(function () { mo.disconnect(); }, 12000); // 12초 후 감시 종료(성능)
+    } catch (e) {}
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
