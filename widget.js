@@ -34,6 +34,9 @@
     // ★메뉴에서 숨길 링크(href 부분일치). 해당 링크의 메뉴 항목(li) 통째로 숨김.
     //   MAGAZINE 메뉴 = /board/magazine/... (PC·모바일 공통).
     hideNavHrefs: ["board/magazine"],
+    // ★푸터 회사정보에서 가릴 문자열(부분일치 제거). 자택주소 동호수 등 프라이버시.
+    //   ⚠️ 화면에서만 가림(카페24 다른 페이지엔 원본 남음). 정확한 삭제는 관리자 회사정보 수정.
+    footerTextRemove: ["113동703호"],
 
     // 고객센터 상담: AI가 못 푸는 문의는 카카오톡 채널로 연결. (채널 채팅 URL)
     kakaoUrl: "http://pf.kakao.com/_PKFAX/chat",
@@ -527,6 +530,25 @@
     } catch (e) {}
   }
 
+  /* ===== 푸터 회사정보에서 특정 문자열 가리기 (자택 동호수 등 프라이버시) =====
+   * footer 영역의 텍스트 노드만 훑어 지정 문자열을 제거. (링크/구조는 안 건드림)         */
+  function scrubFooterText() {
+    if (!CONFIG.footerTextRemove || !CONFIG.footerTextRemove.length) return;
+    try {
+      var root = document.querySelector("#footer, footer, .xans-layout-footer") || document.body;
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+      var nodes = [], n;
+      while ((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(function (node) {
+        var v = node.nodeValue, changed = false;
+        CONFIG.footerTextRemove.forEach(function (s) {
+          if (s && v.indexOf(s) !== -1) { v = v.split(s).join(""); changed = true; }
+        });
+        if (changed) node.nodeValue = v.replace(/\s{2,}/g, " ").replace(/\s+$/, "");
+      });
+    } catch (e) {}
+  }
+
   /* ===== SNS 푸터 바 (쇼핑몰 하단 인스타·스레드 아이콘) ===== */
   function injectSocial() {
     if (!CONFIG.instagramUrl && !CONFIG.threadsUrl) return;
@@ -620,11 +642,12 @@
     injectRewards();
     injectRewardDetail();
     hideSections();
+    scrubFooterText();
     // 카카오 버튼·잔여 섹션은 SDK/모션으로 늦게 그려질 수 있어 여러 번/감시로 처리
     hideKakao();
-    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); injectRewardDetail(); hideSections(); }, ms); });
+    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); injectRewardDetail(); hideSections(); scrubFooterText(); }, ms); });
     try {
-      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); injectRewardDetail(); hideSections(); });
+      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); injectRewardDetail(); hideSections(); scrubFooterText(); });
       mo.observe(document.body, { childList: true, subtree: true });
       setTimeout(function () { mo.disconnect(); }, 12000); // 12초 후 감시 종료(성능)
     } catch (e) {}
