@@ -541,12 +541,18 @@
       for (var i = 0; i < rows.length; i++) {
         var li = rows[i];
         if (li.getAttribute("data-tp-reward")) continue;          // 이미 처리됨
-        var priceEl = li.querySelector(".custom") || li.querySelector(".pri");
-        if (!priceEl) continue;
-        var m = (priceEl.textContent || "").match(/[\d,]+/);       // 첫 가격 토큰만(범위가일 때 대비)
-        if (!m) continue;                                          // 숫자 없음(로그인필요 등) → 스킵
-        var price = parseInt(m[0].replace(/,/g, ""), 10);
-        if (!price || price < 1000) continue;                      // 0원/비정상 → 스킵
+        // ★판매가 추출(소비자가 아님!): 디자인앱 d-custom = 판매가가 가장 정확.
+        //   소비자가>판매가일 때 .price_all .custom 텍스트는 '소비자가'라 적립금 오산되므로 d-custom 우선.
+        var price = 0;
+        var card = li.closest ? (li.closest(".item_list_box") || li.closest("li")) : null;
+        var cp = card && card.querySelector ? card.querySelector(".custom_pro") : null;
+        if (cp && cp.getAttribute("d-custom")) price = parseInt(cp.getAttribute("d-custom"), 10);
+        if (!price) {                                              // 폴백: .pri(=판매가) → .custom 순
+          var pe = li.querySelector(".pri") || li.querySelector(".custom");
+          var m = pe && (pe.textContent || "").match(/[\d,]+/);
+          if (m) price = parseInt(m[0].replace(/,/g, ""), 10);
+        }
+        if (!price || price < 1000) continue;                      // 0원/비정상/로그인필요 → 스킵
         var reward = Math.floor(price * CONFIG.rewardRate);
         li.setAttribute("data-tp-reward", "1");
         var smiley =
