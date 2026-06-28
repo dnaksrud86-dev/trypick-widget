@@ -31,6 +31,9 @@
     // ★메인페이지에서 숨길 섹션(제목 텍스트 기준). 카페24 기본 디자인 잔여 섹션 제거용.
     //   제목이 일치하는 .main_section 통째로 숨김(섹션 번호가 바뀌어도 안전).
     hideSections: ["MAGAZINE", "MUMU TV"],
+    // ★메뉴에서 숨길 링크(href 부분일치). 해당 링크의 메뉴 항목(li) 통째로 숨김.
+    //   MAGAZINE 메뉴 = /board/magazine/... (PC·모바일 공통).
+    hideNavHrefs: ["board/magazine"],
 
     // 고객센터 상담: AI가 못 푸는 문의는 카카오톡 채널로 연결. (채널 채팅 URL)
     kakaoUrl: "http://pf.kakao.com/_PKFAX/chat",
@@ -491,20 +494,36 @@
    * 카페24 기본 디자인에 남은 섹션을 제목 텍스트로 찾아 통째로 숨깁니다.
    * 섹션 번호(main_section_N)가 아니라 '제목'으로 매칭해 디자인 변경에 안전.        */
   function hideSections() {
-    if (!CONFIG.hideSections || !CONFIG.hideSections.length) return;
-    var wants = CONFIG.hideSections.map(function (s) { return (s || "").replace(/\s+/g, "").toUpperCase(); });
     try {
-      var secs = document.querySelectorAll('.main_section,[id^="main_section_"]');
-      secs.forEach(function (sec) {
-        if (sec.getAttribute("data-tp-hidden")) return;
-        var h = sec.querySelector("h1,h2,h3,h4");
-        if (!h) return;
-        var t = (h.textContent || "").replace(/\s+/g, "").toUpperCase();
-        if (wants.indexOf(t) !== -1) {
-          sec.setAttribute("data-tp-hidden", "1");
-          sec.style.setProperty("display", "none", "important");
-        }
-      });
+      // 1) 메인페이지 섹션(제목 텍스트 기준)
+      if (CONFIG.hideSections && CONFIG.hideSections.length) {
+        var wants = CONFIG.hideSections.map(function (s) { return (s || "").replace(/\s+/g, "").toUpperCase(); });
+        document.querySelectorAll('.main_section,[id^="main_section_"]').forEach(function (sec) {
+          if (sec.getAttribute("data-tp-hidden")) return;
+          var h = sec.querySelector("h1,h2,h3,h4");
+          if (!h) return;
+          var t = (h.textContent || "").replace(/\s+/g, "").toUpperCase();
+          if (wants.indexOf(t) !== -1) {
+            sec.setAttribute("data-tp-hidden", "1");
+            sec.style.setProperty("display", "none", "important");
+          }
+        });
+      }
+      // 2) 메뉴 링크(href 부분일치) — 해당 항목(li) 숨김. 예: MAGAZINE 메뉴 제거.
+      if (CONFIG.hideNavHrefs && CONFIG.hideNavHrefs.length) {
+        document.querySelectorAll("a[href]").forEach(function (a) {
+          if (a.getAttribute("data-tp-navhide")) return;
+          var href = a.getAttribute("href") || "";
+          for (var i = 0; i < CONFIG.hideNavHrefs.length; i++) {
+            if (href.indexOf(CONFIG.hideNavHrefs[i]) !== -1) {
+              a.setAttribute("data-tp-navhide", "1");
+              var li = a.closest("li") || a;
+              li.style.setProperty("display", "none", "important");
+              break;
+            }
+          }
+        });
+      }
     } catch (e) {}
   }
 
