@@ -37,6 +37,11 @@
     // ★푸터 회사정보에서 가릴 문자열(부분일치 제거). 자택주소 동호수 등 프라이버시.
     //   ⚠️ 화면에서만 가림(카페24 다른 페이지엔 원본 남음). 정확한 삭제는 관리자 회사정보 수정.
     footerTextRemove: ["113동703호"],
+    // ★페이지 전체 텍스트 치환(개인 전화번호 → 0502 안심번호 등). 화면 표시만 교체.
+    textReplace: [
+      { from: "01062365011", to: "0502-1936-2008" },
+      { from: "010-6236-5011", to: "0502-1936-2008" },
+    ],
 
     // 고객센터 상담: AI가 못 푸는 문의는 카카오톡 채널로 연결. (채널 채팅 URL)
     kakaoUrl: "http://pf.kakao.com/_PKFAX/chat",
@@ -530,22 +535,40 @@
     } catch (e) {}
   }
 
-  /* ===== 푸터 회사정보에서 특정 문자열 가리기 (자택 동호수 등 프라이버시) =====
-   * footer 영역의 텍스트 노드만 훑어 지정 문자열을 제거. (링크/구조는 안 건드림)         */
+  /* ===== 푸터 회사정보 가리기 + 페이지 전체 텍스트 치환 (프라이버시) =====
+   * footerTextRemove: 푸터 영역에서 문자열 제거(동호수 등)
+   * textReplace: 페이지 전체에서 문자열 치환(개인 전화 → 0502 등). 화면 표시만 바꿈.        */
+  function tpWalkText(root, fn) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, nodes = [];
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function (node) {
+      var p = node.parentNode;
+      if (p && (p.nodeName === "SCRIPT" || p.nodeName === "STYLE" || p.nodeName === "TEXTAREA")) return;
+      if (p && p.closest && p.closest(".tp-panel,.tp-pop-back,.tp-fab,.tp-social")) return;  // 우리 위젯 제외
+      var v = fn(node.nodeValue);
+      if (v !== node.nodeValue) node.nodeValue = v;
+    });
+  }
   function scrubFooterText() {
-    if (!CONFIG.footerTextRemove || !CONFIG.footerTextRemove.length) return;
     try {
-      var root = document.querySelector("#footer, footer, .xans-layout-footer") || document.body;
-      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-      var nodes = [], n;
-      while ((n = walker.nextNode())) nodes.push(n);
-      nodes.forEach(function (node) {
-        var v = node.nodeValue, changed = false;
-        CONFIG.footerTextRemove.forEach(function (s) {
-          if (s && v.indexOf(s) !== -1) { v = v.split(s).join(""); changed = true; }
+      if (CONFIG.footerTextRemove && CONFIG.footerTextRemove.length) {
+        var root = document.querySelector("#footer, footer, .xans-layout-footer") || document.body;
+        tpWalkText(root, function (v) {
+          var changed = false;
+          CONFIG.footerTextRemove.forEach(function (s) {
+            if (s && v.indexOf(s) !== -1) { v = v.split(s).join(""); changed = true; }
+          });
+          return changed ? v.replace(/\s{2,}/g, " ").replace(/\s+$/, "") : v;
         });
-        if (changed) node.nodeValue = v.replace(/\s{2,}/g, " ").replace(/\s+$/, "");
-      });
+      }
+      if (CONFIG.textReplace && CONFIG.textReplace.length) {
+        tpWalkText(document.body, function (v) {
+          CONFIG.textReplace.forEach(function (r) {
+            if (r.from && v.indexOf(r.from) !== -1) v = v.split(r.from).join(r.to);
+          });
+          return v;
+        });
+      }
     } catch (e) {}
   }
 
