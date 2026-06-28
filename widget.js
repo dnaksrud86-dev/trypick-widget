@@ -28,6 +28,10 @@
     threadsUrl: "https://www.threads.com/@trypick_2026",
     socialLabel: "TRYPICK 팔로우하고 신상 소식 받기",
 
+    // ★메인페이지에서 숨길 섹션(제목 텍스트 기준). 카페24 기본 디자인 잔여 섹션 제거용.
+    //   제목이 일치하는 .main_section 통째로 숨김(섹션 번호가 바뀌어도 안전).
+    hideSections: ["MAGAZINE", "MUMU TV"],
+
     // 고객센터 상담: AI가 못 푸는 문의는 카카오톡 채널로 연결. (채널 채팅 URL)
     kakaoUrl: "http://pf.kakao.com/_PKFAX/chat",
 
@@ -261,7 +265,7 @@
     ".tp-social-ic a svg{width:24px;height:24px;fill:#fff}" +
     // 상품목록 예상 적립금 한 줄
     ".tp-reward{list-style:none;margin:3px 0 0;padding:0;font-size:12px;font-weight:700;color:" + CD + ";letter-spacing:-.2px;line-height:1.3}" +
-    ".tp-reward .tp-coin{margin-right:2px}" +
+    ".tp-reward .tp-coin{width:14px;height:14px;margin-right:4px;vertical-align:-2px}" +
     // 모바일
     "@media(max-width:480px){.tp-panel{right:0;bottom:0;width:100vw;height:100vh;max-height:100vh;border-radius:0}.tp-fab{right:16px;bottom:16px}.tp-reward{font-size:11px}}";
   // 둥근 폰트: Quicksand(로고/숫자), Jua(한글 본문) — 위젯 전체를 동글하게
@@ -479,6 +483,27 @@
     } catch (e) {}
   }
 
+  /* ===== 메인페이지 잔여 섹션 숨김 (MAGAZINE / MUMU TV 등) =====
+   * 카페24 기본 디자인에 남은 섹션을 제목 텍스트로 찾아 통째로 숨깁니다.
+   * 섹션 번호(main_section_N)가 아니라 '제목'으로 매칭해 디자인 변경에 안전.        */
+  function hideSections() {
+    if (!CONFIG.hideSections || !CONFIG.hideSections.length) return;
+    var wants = CONFIG.hideSections.map(function (s) { return (s || "").replace(/\s+/g, "").toUpperCase(); });
+    try {
+      var secs = document.querySelectorAll('.main_section,[id^="main_section_"]');
+      secs.forEach(function (sec) {
+        if (sec.getAttribute("data-tp-hidden")) return;
+        var h = sec.querySelector("h1,h2,h3,h4");
+        if (!h) return;
+        var t = (h.textContent || "").replace(/\s+/g, "").toUpperCase();
+        if (wants.indexOf(t) !== -1) {
+          sec.setAttribute("data-tp-hidden", "1");
+          sec.style.setProperty("display", "none", "important");
+        }
+      });
+    } catch (e) {}
+  }
+
   /* ===== SNS 푸터 바 (쇼핑몰 하단 인스타·스레드 아이콘) ===== */
   function injectSocial() {
     if (!CONFIG.instagramUrl && !CONFIG.threadsUrl) return;
@@ -523,7 +548,13 @@
         if (!price || price < 1000) continue;                      // 0원/비정상 → 스킵
         var reward = Math.floor(price * CONFIG.rewardRate);
         li.setAttribute("data-tp-reward", "1");
-        var el = $('<li class="tp-reward"><span class="tp-coin">💰</span>' +
+        var smiley =
+          '<svg class="tp-coin" viewBox="0 0 24 24" aria-hidden="true">' +
+            '<rect x="1" y="1" width="22" height="22" rx="7" fill="' + CONFIG.color + '"/>' +
+            '<circle cx="8.6" cy="10" r="1.8" fill="#fff"/><circle cx="15.4" cy="10" r="1.8" fill="#fff"/>' +
+            '<path d="M7.6 13.8 Q12 18 16.4 13.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>' +
+          "</svg>";
+        var el = $('<li class="tp-reward">' + smiley +
           CONFIG.rewardPrefix + reward.toLocaleString("ko-KR") + CONFIG.rewardSuffix + "</li>");
         if (li.parentNode) li.parentNode.insertBefore(el, li.nextSibling);
       }
@@ -537,11 +568,12 @@
     showPopup();
     injectSocial();
     injectRewards();
-    // 카카오 버튼은 SDK가 늦게 그릴 수 있어 여러 번/감시로 숨김
+    hideSections();
+    // 카카오 버튼·잔여 섹션은 SDK/모션으로 늦게 그려질 수 있어 여러 번/감시로 처리
     hideKakao();
-    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); }, ms); });
+    [400, 1200, 2500, 5000].forEach(function (ms) { setTimeout(function () { hideKakao(); injectRewards(); hideSections(); }, ms); });
     try {
-      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); });
+      var mo = new MutationObserver(function () { hideKakao(); injectRewards(); hideSections(); });
       mo.observe(document.body, { childList: true, subtree: true });
       setTimeout(function () { mo.disconnect(); }, 12000); // 12초 후 감시 종료(성능)
     } catch (e) {}
